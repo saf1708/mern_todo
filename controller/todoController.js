@@ -5,25 +5,26 @@ exports.createTodo = async (req, res) => {
   try {
     const { title, description } = req.body;
 
-    const todo = await Todo.create({ title, description });
+    const todo = await Todo.create({
+      title,
+      description,
+      user: req.user.id, // attach logged-in user
+    });
 
     res.status(201).json({
       success: true,
-      message: "Todo Created Successfully",
       data: todo,
     });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: error.message,
-    });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
 // ✅ Get All Todos
 exports.getAllTodos = async (req, res) => {
   try {
-    const todos = await Todo.find().sort({ createdAt: -1 });
+    const todos = await Todo.find({ user: req.user.id })
+      .sort({ createdAt: -1 });
 
     res.status(200).json({
       success: true,
@@ -31,10 +32,7 @@ exports.getAllTodos = async (req, res) => {
       data: todos,
     });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: error.message,
-    });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -43,22 +41,25 @@ exports.updateTodo = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const updatedTodo = await Todo.findByIdAndUpdate(
-      id,
+    const todo = await Todo.findOneAndUpdate(
+      { _id: id, user: req.user.id },
       req.body,
-      { new: true }
+      { returnDocument: 'after' }
     );
+
+    if (!todo) {
+      return res.status(404).json({
+        success: false,
+        message: "Todo not found or unauthorized",
+      });
+    }
 
     res.status(200).json({
       success: true,
-      message: "Todo Updated Successfully",
-      data: updatedTodo,
+      data: todo,
     });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: error.message,
-    });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -67,17 +68,24 @@ exports.deleteTodo = async (req, res) => {
   try {
     const { id } = req.params;
 
-    await Todo.findByIdAndDelete(id);
+    const todo = await Todo.findOneAndDelete({
+      _id: id,
+      user: req.user.id,
+    });
+
+    if (!todo) {
+      return res.status(404).json({
+        success: false,
+        message: "Todo not found or unauthorized",
+      });
+    }
 
     res.status(200).json({
       success: true,
-      message: "Todo Deleted Successfully",
+      message: "Todo deleted successfully",
     });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: error.message,
-    });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
